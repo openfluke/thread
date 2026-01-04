@@ -86,9 +86,13 @@ type ExperimentResult struct {
 	Windows          []TimeWindow `json:"windows"`
 	Score            float64      `json:"score"`
 	AvgAccuracy      float64      `json:"avgAccuracy"`
-	Stability        float64      `json:"stability"`
-	Consistency      float64      `json:"consistency"`
-	ThroughputPerSec float64      `json:"throughputPerSec"`
+	Stability        float64      `json:"stability"`        // I_stab: max(0, 100 - σ_acc)
+	Consistency      float64      `json:"consistency"`      // R_cons: Windows > Threshold / Total
+	ThroughputPerSec float64      `json:"throughputPerSec"` // Raw samples/sec
+	ThroughputScore  float64      `json:"throughputScore"`  // S_tput: log10(throughput)
+	Plasticity       float64      `json:"plasticity"`       // Q_plast: 1000 / (recovery_ms + ε)
+	MemoryDelta      float64      `json:"memoryDelta"`      // Δ_mem: Acc_visit2 - Acc_visit1
+	Precision        float64      `json:"precision"`        // S_prec: avg(100 - deviation)
 }
 
 type Experiment struct {
@@ -160,6 +164,10 @@ func createSampleExperiments() []Experiment {
 				Stability:        83,
 				Consistency:      79,
 				ThroughputPerSec: 10504,
+				ThroughputScore:  4.02, // log10(10504)
+				Plasticity:       5.0,  // 1000/200ms recovery
+				MemoryDelta:      2.3,  // Slight improvement on revisit
+				Precision:        89.2, // Low deviation
 			},
 			Status:    "complete",
 			CreatedAt: "2026-01-05T09:00:00Z",
@@ -183,6 +191,10 @@ func createSampleExperiments() []Experiment {
 				Stability:        92,
 				Consistency:      88,
 				ThroughputPerSec: 8500,
+				ThroughputScore:  3.93, // log10(8500)
+				Plasticity:       2.1,  // 1000/480ms - slower adaptation
+				MemoryDelta:      -1.5, // Slight forgetting
+				Precision:        96.5, // Very precise
 			},
 			Status:    "complete",
 			CreatedAt: "2026-01-05T08:30:00Z",
@@ -206,6 +218,10 @@ func createSampleExperiments() []Experiment {
 				Stability:        76,
 				Consistency:      82,
 				ThroughputPerSec: 5200,
+				ThroughputScore:  3.72, // log10(5200)
+				Plasticity:       3.3,  // 1000/300ms
+				MemoryDelta:      8.5,  // Strong memory retention
+				Precision:        84.1,
 			},
 			Status:    "complete",
 			CreatedAt: "2026-01-05T08:00:00Z",

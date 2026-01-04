@@ -35,44 +35,95 @@
     </div>
 </section>
 
-<!-- Metrics Grid -->
+<!-- Metrics Grid - All 6 Component Metrics -->
 <section class="section">
-    <h2 class="section-title">📊 Performance Metrics</h2>
+    <h2 class="section-title">📊 T.H.R.E.A.D. Component Metrics</h2>
 
-    <div class="metrics-detail-grid">
+    <div class="metrics-detail-grid-6">
         <div class="metric-detail glass">
-            <div class="metric-value-lg">{{printf "%.1f" .Experiment.Results.AvgAccuracy}}%</div>
-            <div class="metric-label">Average Accuracy</div>
+            <div class="metric-icon-sm">⚡</div>
+            <div class="metric-value-lg">{{printf "%.2f" .Experiment.Results.ThroughputScore}}</div>
+            <div class="metric-label">S<sub>tput</sub> (Throughput)</div>
+            <div class="metric-formula-sm">log₁₀({{printf "%.0f" .Experiment.Results.ThroughputPerSec}})</div>
+        </div>
+
+        <div class="metric-detail glass">
+            <div class="metric-icon-sm">⚖️</div>
+            <div class="metric-value-lg">{{printf "%.0f" .Experiment.Results.Stability}}%</div>
+            <div class="metric-label">I<sub>stab</sub> (Stability)</div>
+            <div class="metric-formula-sm">max(0, 100 - σ<sub>acc</sub>)</div>
+        </div>
+
+        <div class="metric-detail glass">
+            <div class="metric-icon-sm">✓</div>
+            <div class="metric-value-lg">{{printf "%.0f" .Experiment.Results.Consistency}}%</div>
+            <div class="metric-label">R<sub>cons</sub> (Consistency)</div>
+            <div class="metric-formula-sm">Reliable windows / Total</div>
+        </div>
+
+        <div class="metric-detail glass">
+            <div class="metric-icon-sm">🔄</div>
+            <div class="metric-value-lg">{{printf "%.1f" .Experiment.Results.Plasticity}}</div>
+            <div class="metric-label">Q<sub>plast</sub> (Plasticity)</div>
+            <div class="metric-formula-sm">1000 / (recovery<sub>ms</sub> + ε)</div>
+        </div>
+
+        <div class="metric-detail glass">
+            <div class="metric-icon-sm">🧠</div>
+            <div class="metric-value-lg">{{printf "%+.1f" .Experiment.Results.MemoryDelta}}%</div>
+            <div class="metric-label">Δ<sub>mem</sub> (Memory)</div>
+            <div class="metric-formula-sm">Acc<sub>visit2</sub> - Acc<sub>visit1</sub></div>
+        </div>
+
+        <div class="metric-detail glass">
+            <div class="metric-icon-sm">🎯</div>
+            <div class="metric-value-lg">{{printf "%.1f" .Experiment.Results.Precision}}%</div>
+            <div class="metric-label">S<sub>prec</sub> (Precision)</div>
+            <div class="metric-formula-sm">avg(100 - deviation)</div>
+        </div>
+    </div>
+
+    <!-- Traditional metrics bar view -->
+    <div class="metrics-bars-grid glass">
+        <div class="metric-bar-item">
+            <div class="metric-bar-header">
+                <span>Average Accuracy</span>
+                <span>{{printf "%.1f" .Experiment.Results.AvgAccuracy}}%</span>
+            </div>
             <div class="metric-bar">
                 <div class="metric-fill" style="width: {{printf " %.0f" .Experiment.Results.AvgAccuracy}}%"></div>
             </div>
         </div>
-
-        <div class="metric-detail glass">
-            <div class="metric-value-lg">{{printf "%.0f" .Experiment.Results.Stability}}%</div>
-            <div class="metric-label">Stability Index</div>
+        <div class="metric-bar-item">
+            <div class="metric-bar-header">
+                <span>Stability Index</span>
+                <span>{{printf "%.0f" .Experiment.Results.Stability}}%</span>
+            </div>
             <div class="metric-bar">
                 <div class="metric-fill success" style="width: {{printf " %.0f" .Experiment.Results.Stability}}%"></div>
             </div>
         </div>
-
-        <div class="metric-detail glass">
-            <div class="metric-value-lg">{{printf "%.0f" .Experiment.Results.Consistency}}%</div>
-            <div class="metric-label">Consistency Rate</div>
+        <div class="metric-bar-item">
+            <div class="metric-bar-header">
+                <span>Consistency Rate</span>
+                <span>{{printf "%.0f" .Experiment.Results.Consistency}}%</span>
+            </div>
             <div class="metric-bar">
                 <div class="metric-fill info" style="width: {{printf " %.0f" .Experiment.Results.Consistency}}%"></div>
             </div>
         </div>
-
-        <div class="metric-detail glass">
-            <div class="metric-value-lg">{{printf "%.0f" .Experiment.Results.ThroughputPerSec}}</div>
-            <div class="metric-label">Throughput/sec</div>
+        <div class="metric-bar-item">
+            <div class="metric-bar-header">
+                <span>Precision Score</span>
+                <span>{{printf "%.1f" .Experiment.Results.Precision}}%</span>
+            </div>
             <div class="metric-bar">
-                <div class="metric-fill warning" id="throughputBar"></div>
+                <div class="metric-fill warning" style="width: {{printf " %.0f" .Experiment.Results.Precision}}%"></div>
             </div>
         </div>
     </div>
 </section>
+
 
 <!-- Configuration -->
 <section class="section">
@@ -190,25 +241,31 @@
                     });
                 }
 
-                // Radar Chart
+                // Radar Chart - All 6 T.H.R.E.A.D. Metrics
                 const radarCtx = document.getElementById('radarChart');
                 if (radarCtx) {
+                    // Normalize all values to 0-100 scale for radar
+                    const normalizedData = [
+                        exp.results.throughputScore * 25,  // S_tput (0-4 → 0-100)
+                        exp.results.stability,              // I_stab (already 0-100)
+                        exp.results.consistency,            // R_cons (already 0-100)
+                        exp.results.plasticity * 10,        // Q_plast (0-10 → 0-100)
+                        Math.max(0, 50 + exp.results.memoryDelta * 2), // Δ_mem (-25 to +25 → 0-100)
+                        exp.results.precision               // S_prec (already 0-100)
+                    ];
+
                     new Chart(radarCtx, {
                         type: 'radar',
                         data: {
-                            labels: ['Accuracy', 'Stability', 'Consistency', 'Throughput', 'Score'],
+                            labels: ['Throughput', 'Stability', 'Consistency', 'Plasticity', 'Memory', 'Precision'],
                             datasets: [{
                                 label: exp.name,
-                                data: [
-                                    exp.results.avgAccuracy,
-                                    exp.results.stability,
-                                    exp.results.consistency,
-                                    Math.min(100, Math.log10(exp.results.throughputPerSec) * 25),
-                                    Math.min(100, exp.results.score / 10)
-                                ],
+                                data: normalizedData,
                                 borderColor: '{{.CurrentDomain.Color}}',
                                 backgroundColor: '{{.CurrentDomain.Color}}44',
-                                borderWidth: 2
+                                borderWidth: 2,
+                                pointBackgroundColor: '{{.CurrentDomain.Color}}',
+                                pointRadius: 4
                             }]
                         },
                         options: {
@@ -219,8 +276,8 @@
                                     beginAtZero: true,
                                     max: 100,
                                     grid: { color: '#334155' },
-                                    ticks: { color: '#94a3b8', backdropColor: 'transparent' },
-                                    pointLabels: { color: '#94a3b8' }
+                                    ticks: { color: '#94a3b8', backdropColor: 'transparent', stepSize: 25 },
+                                    pointLabels: { color: '#94a3b8', font: { size: 11 } }
                                 }
                             },
                             plugins: { legend: { display: false } }
@@ -228,20 +285,30 @@
                     });
                 }
 
-                // Pie Chart
+                // Pie Chart - Score Composition (all 6 components)
                 const pieCtx = document.getElementById('pieChart');
                 if (pieCtx) {
                     new Chart(pieCtx, {
                         type: 'doughnut',
                         data: {
-                            labels: ['Throughput Factor', 'Stability Factor', 'Consistency Factor'],
+                            labels: ['Throughput', 'Stability', 'Consistency', 'Plasticity', 'Memory', 'Precision'],
                             datasets: [{
                                 data: [
-                                    Math.log10(exp.results.throughputPerSec) * 10,
+                                    exp.results.throughputScore * 25,
                                     exp.results.stability,
-                                    exp.results.consistency
+                                    exp.results.consistency,
+                                    exp.results.plasticity * 10,
+                                    Math.abs(exp.results.memoryDelta) * 5,
+                                    exp.results.precision
                                 ],
-                                backgroundColor: ['#3b82f6', '#10b981', '#f59e0b'],
+                                backgroundColor: [
+                                    '#3b82f6', // Throughput - Blue
+                                    '#10b981', // Stability - Green
+                                    '#8b5cf6', // Consistency - Purple
+                                    '#f59e0b', // Plasticity - Amber
+                                    '#ec4899', // Memory - Pink
+                                    '#14b8a6'  // Precision - Teal
+                                ],
                                 borderWidth: 0
                             }]
                         },
@@ -249,7 +316,7 @@
                             responsive: true,
                             maintainAspectRatio: false,
                             plugins: {
-                                legend: { position: 'bottom', labels: { color: '#94a3b8' } }
+                                legend: { position: 'bottom', labels: { color: '#94a3b8', boxWidth: 12, padding: 8 } }
                             }
                         }
                     });
