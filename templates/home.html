@@ -1,0 +1,215 @@
+{{define "content"}}
+<div class="page-header">
+    <h1 class="page-title">
+        <span class="title-icon">🌊</span>
+        T.H.R.E.A.D. Benchmark Suite
+    </h1>
+    <p class="page-subtitle">Temporal Heuristic Rapid Evaluation And Dynamics</p>
+    <p class="page-description">
+        Measuring the <strong>trajectory</strong> of learning algorithms during their first 60 seconds of life.
+        Unlike traditional benchmarks that measure the destination, we measure the journey.
+    </p>
+</div>
+
+<!-- Stats Cards -->
+<div class="stats-grid">
+    <div class="stat-card glass">
+        <div class="stat-icon">🧪</div>
+        <div class="stat-value">{{.ExperimentCount}}</div>
+        <div class="stat-label">Experiments</div>
+    </div>
+    <div class="stat-card glass">
+        <div class="stat-icon">🧠</div>
+        <div class="stat-value">{{len .Domains}}</div>
+        <div class="stat-label">AI Domains</div>
+    </div>
+    <div class="stat-card glass">
+        <div class="stat-icon">📊</div>
+        <div class="stat-value">10</div>
+        <div class="stat-label">Difficulty Levels</div>
+    </div>
+    <div class="stat-card glass">
+        <div class="stat-icon">⚡</div>
+        <div class="stat-value">60s</div>
+        <div class="stat-label">Benchmark Duration</div>
+    </div>
+</div>
+
+<!-- Domains Grid -->
+<section class="section">
+    <h2 class="section-title">🧠 AI Domains</h2>
+    <p class="section-description">Explore benchmarks across every major area of AI</p>
+
+    <div class="domains-grid">
+        {{range .Domains}}
+        <a href="/domain/{{.ID}}" class="domain-card glass" style="--domain-color: {{.Color}}">
+            <div class="domain-header">
+                <span class="domain-icon-lg">{{.Icon}}</span>
+                <span class="domain-count">{{index $.DomainCounts .ID}} experiments</span>
+            </div>
+            <h3 class="domain-name">{{.Name}}</h3>
+            <p class="domain-description">{{.Description}}</p>
+            <div class="domain-levels">
+                <span class="level-indicator active"></span>
+                <span class="level-indicator active"></span>
+                <span class="level-indicator active"></span>
+                <span class="level-indicator"></span>
+                <span class="level-indicator"></span>
+                <span class="level-indicator"></span>
+                <span class="level-indicator"></span>
+                <span class="level-indicator"></span>
+                <span class="level-indicator"></span>
+                <span class="level-indicator"></span>
+            </div>
+        </a>
+        {{end}}
+    </div>
+</section>
+
+<!-- Difficulty Levels -->
+<section class="section">
+    <h2 class="section-title">📈 Difficulty Levels</h2>
+    <p class="section-description">From toy problems to frontier models</p>
+
+    <div class="levels-table glass">
+        <div class="table-header">
+            <div class="th">Level</div>
+            <div class="th">Name</div>
+            <div class="th">Description</div>
+            <div class="th">Model Size</div>
+        </div>
+        {{range .Levels}}
+        <div class="table-row">
+            <div class="td">
+                <span class="level-badge level-{{.Level}}">{{.Level}}</span>
+            </div>
+            <div class="td">
+                <strong>{{.Name}}</strong>
+            </div>
+            <div class="td">{{.Description}}</div>
+            <div class="td">
+                <code>{{.ModelSize}}</code>
+            </div>
+        </div>
+        {{end}}
+    </div>
+</section>
+
+<!-- Component Metrics -->
+<section class="section">
+    <h2 class="section-title">📐 Component Metrics</h2>
+    <p class="section-description">Six dimensions of learning health</p>
+
+    <div class="metrics-grid">
+        <div class="metric-card glass">
+            <div class="metric-header">
+                <span class="metric-icon">🚀</span>
+                <h3>Throughput Score</h3>
+            </div>
+            <p class="metric-formula">S<sub>tput</sub> = log₁₀(TokensPerSecond)</p>
+            <p class="metric-description">Raw speed with logarithmic scaling for diminishing returns</p>
+        </div>
+
+        <div class="metric-card glass">
+            <div class="metric-header">
+                <span class="metric-icon">⚖️</span>
+                <h3>Stability Index</h3>
+            </div>
+            <p class="metric-formula">I<sub>stab</sub> = max(0, 100 - σ<sub>acc</sub>)</p>
+            <p class="metric-description">Smoothness of learning curve; penalizes thrashing</p>
+        </div>
+
+        <div class="metric-card glass">
+            <div class="metric-header">
+                <span class="metric-icon">✓</span>
+                <h3>Consistency Rate</h3>
+            </div>
+            <p class="metric-formula">R<sub>cons</sub> = Windows > Threshold / Total</p>
+            <p class="metric-description">Reliability metric: "Can I trust this model now?"</p>
+        </div>
+
+        <div class="metric-card glass">
+            <div class="metric-header">
+                <span class="metric-icon">🔄</span>
+                <h3>Plasticity Quotient</h3>
+            </div>
+            <p class="metric-formula">Q<sub>plast</sub> = 1000 / (t<sub>rec</sub> + ε)</p>
+            <p class="metric-description">Adaptation velocity after task switches</p>
+        </div>
+
+        <div class="metric-card glass">
+            <div class="metric-header">
+                <span class="metric-icon">🧠</span>
+                <h3>Memory Delta</h3>
+            </div>
+            <p class="metric-formula">Δ<sub>mem</sub> = Acc<sub>visit2</sub> - Acc<sub>visit1</sub></p>
+            <p class="metric-description">Catastrophic forgetting measurement</p>
+        </div>
+
+        <div class="metric-card glass">
+            <div class="metric-header">
+                <span class="metric-icon">🎯</span>
+                <h3>Precision Score</h3>
+            </div>
+            <p class="metric-formula">S<sub>prec</sub> = avg(max(0, 100 - Deviation))</p>
+            <p class="metric-description">Penalizes hallucinations heavily</p>
+        </div>
+    </div>
+</section>
+
+<!-- Leaderboard -->
+<section class="section">
+    <h2 class="section-title">🏆 Top Experiments</h2>
+    <p class="section-description">Highest scoring experiments across all domains</p>
+
+    <div class="leaderboard glass" id="leaderboard">
+        <div class="loading">Loading leaderboard...</div>
+    </div>
+</section>
+
+<script>
+    // Load leaderboard on page load
+    fetch('/api/leaderboard')
+        .then(r => r.json())
+        .then(data => {
+            const container = document.getElementById('leaderboard');
+            if (data.length === 0) {
+                container.innerHTML = '<div class="empty-state">No experiments yet. Run some benchmarks!</div>';
+                return;
+            }
+
+            let html = '<div class="leaderboard-list">';
+            data.forEach((exp, i) => {
+                html += `
+                <a href="/experiment/${exp.id}" class="leaderboard-item">
+                    <span class="rank">#${i + 1}</span>
+                    <span class="exp-icon">${getDomainIcon(exp.domain)}</span>
+                    <div class="exp-info">
+                        <span class="exp-name">${exp.name}</span>
+                        <span class="exp-meta">${exp.domain} · Level ${exp.level}</span>
+                    </div>
+                    <span class="exp-score">${Math.round(exp.results.score)}</span>
+                </a>
+            `;
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        });
+
+    function getDomainIcon(domain) {
+        const icons = {
+            classification: '🏷️',
+            regression: '📈',
+            generation: '✨',
+            sequence: '🔗',
+            reinforcement: '🎮',
+            anomaly: '🔍',
+            clustering: '🎯',
+            embedding: '🧬',
+            optimization: '⚡',
+            metalearning: '🧠'
+        };
+        return icons[domain] || '📊';
+    }
+</script>
+{{end}}

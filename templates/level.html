@@ -1,0 +1,180 @@
+{{define "content"}}
+<div class="page-header">
+    <nav class="breadcrumb">
+        <a href="/">Home</a>
+        <span class="sep">›</span>
+        <a href="/domain/{{.CurrentDomain.ID}}">{{.CurrentDomain.Name}}</a>
+        <span class="sep">›</span>
+        <span>Level {{.CurrentLevel.Level}}</span>
+    </nav>
+    <h1 class="page-title">
+        <span class="title-icon" style="color: {{.CurrentDomain.Color}}">{{.CurrentDomain.Icon}}</span>
+        {{.CurrentDomain.Name}} - Level {{.CurrentLevel.Level}}
+    </h1>
+    <p class="page-subtitle">{{.CurrentLevel.Name}}</p>
+    <p class="page-description">{{.CurrentLevel.Description}}</p>
+    <div class="level-meta">
+        <span class="meta-item">📐 Model Size: <code>{{.CurrentLevel.ModelSize}}</code></span>
+    </div>
+</div>
+
+<!-- Level Navigation -->
+<div class="level-nav">
+    {{range .Levels}}
+    <a href="/domain/{{$.CurrentDomain.ID}}/{{.Level}}"
+        class="level-nav-item {{if eq .Level $.CurrentLevel.Level}}active{{end}}">
+        {{.Level}}
+    </a>
+    {{end}}
+</div>
+
+<!-- Experiments -->
+<section class="section">
+    <h2 class="section-title">🧪 Level {{.CurrentLevel.Level}} Experiments</h2>
+
+    {{if .Experiments}}
+    <div class="experiments-grid">
+        {{range .Experiments}}
+        <a href="/experiment/{{.ID}}" class="experiment-card glass">
+            <div class="exp-header">
+                <span class="exp-status status-{{.Status}}">{{.Status}}</span>
+                <span class="exp-mode">{{.Config.TrainMode}}</span>
+            </div>
+            <h3 class="exp-name">{{.Name}}</h3>
+            <p class="exp-description">{{.Description}}</p>
+            <div class="exp-config">
+                <div class="config-item">
+                    <span class="config-label">Dataset</span>
+                    <span class="config-value">{{.Dataset}}</span>
+                </div>
+                <div class="config-item">
+                    <span class="config-label">Numeric Type</span>
+                    <span class="config-value">{{.Config.NumericType}}</span>
+                </div>
+            </div>
+            <div class="exp-results">
+                <div class="result-bar">
+                    <div class="result-fill" style="width: {{.Results.AvgAccuracy}}%"></div>
+                </div>
+                <div class="result-stats">
+                    <span>{{printf "%.1f" .Results.AvgAccuracy}}% accuracy</span>
+                    <span>Score: {{printf "%.0f" .Results.Score}}</span>
+                </div>
+            </div>
+        </a>
+        {{end}}
+    </div>
+    {{else}}
+    <div class="empty-state glass">
+        <span class="empty-icon">📭</span>
+        <h3>No Level {{.CurrentLevel.Level}} experiments yet</h3>
+        <p>Run benchmarks at this difficulty level to see them here.</p>
+    </div>
+    {{end}}
+</section>
+
+<!-- Comparison Chart -->
+{{if .Experiments}}
+<section class="section">
+    <h2 class="section-title">📊 Experiment Comparison</h2>
+
+    <div class="charts-row">
+        <div class="chart-container glass">
+            <h3 class="chart-title">Score Breakdown</h3>
+            <canvas id="scoreChart"></canvas>
+        </div>
+        <div class="chart-container glass">
+            <h3 class="chart-title">Performance Metrics</h3>
+            <canvas id="radarChart"></canvas>
+        </div>
+    </div>
+</section>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const experiments = {{.Experiments }
+    };
+
+    // Score Chart
+    const scoreCtx = document.getElementById('scoreChart');
+    if (scoreCtx && experiments.length > 0) {
+        new Chart(scoreCtx, {
+            type: 'bar',
+            data: {
+                labels: experiments.map(e => e.name),
+                datasets: [{
+                    label: 'Score',
+                    data: experiments.map(e => e.results.score),
+                    backgroundColor: [
+                        '#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444'
+                    ],
+                    borderRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: '#334155' },
+                        ticks: { color: '#94a3b8' }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#94a3b8' }
+                    }
+                }
+            }
+        });
+    }
+
+    // Radar Chart
+    const radarCtx = document.getElementById('radarChart');
+    if (radarCtx && experiments.length > 0) {
+        const colors = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444'];
+        new Chart(radarCtx, {
+            type: 'radar',
+            data: {
+                labels: ['Accuracy', 'Stability', 'Consistency', 'Throughput (log)', 'Score (scaled)'],
+                datasets: experiments.map((e, i) => ({
+                    label: e.name,
+                    data: [
+                        e.results.avgAccuracy,
+                        e.results.stability,
+                        e.results.consistency,
+                        Math.log10(e.results.throughputPerSec) * 20,
+                        e.results.score / 10
+                    ],
+                    borderColor: colors[i % colors.length],
+                    backgroundColor: colors[i % colors.length] + '33',
+                    borderWidth: 2
+                }))
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    r: {
+                        beginAtZero: true,
+                        max: 100,
+                        grid: { color: '#334155' },
+                        ticks: { color: '#94a3b8', backdropColor: 'transparent' },
+                        pointLabels: { color: '#94a3b8' }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: { color: '#94a3b8' }
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
+{{end}}
+{{end}}

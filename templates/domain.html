@@ -1,0 +1,134 @@
+{{define "content"}}
+<div class="page-header">
+    <nav class="breadcrumb">
+        <a href="/">Home</a>
+        <span class="sep">›</span>
+        <span>{{.CurrentDomain.Name}}</span>
+    </nav>
+    <h1 class="page-title">
+        <span class="title-icon" style="color: {{.CurrentDomain.Color}}">{{.CurrentDomain.Icon}}</span>
+        {{.CurrentDomain.Name}}
+    </h1>
+    <p class="page-description">{{.CurrentDomain.Description}}</p>
+</div>
+
+<!-- Level Grid -->
+<section class="section">
+    <h2 class="section-title">📊 Experiments by Level</h2>
+
+    <div class="level-cards-grid">
+        {{range .Levels}}
+        <a href="/domain/{{$.CurrentDomain.ID}}/{{.Level}}" class="level-card glass">
+            <div class="level-num level-{{.Level}}">{{.Level}}</div>
+            <div class="level-info">
+                <h3>{{.Name}}</h3>
+                <p>{{.Description}}</p>
+                <code>{{.ModelSize}}</code>
+            </div>
+        </a>
+        {{end}}
+    </div>
+</section>
+
+<!-- All Experiments -->
+<section class="section">
+    <h2 class="section-title">🧪 All {{.CurrentDomain.Name}} Experiments</h2>
+
+    {{if .Experiments}}
+    <div class="experiments-list">
+        {{range .Experiments}}
+        <a href="/experiment/{{.ID}}" class="experiment-card glass">
+            <div class="exp-header">
+                <span class="level-badge level-{{.Level}}">L{{.Level}}</span>
+                <span class="exp-status status-{{.Status}}">{{.Status}}</span>
+            </div>
+            <h3 class="exp-name">{{.Name}}</h3>
+            <p class="exp-description">{{.Description}}</p>
+            <div class="exp-meta">
+                <span>📁 {{.Dataset}}</span>
+                <span>⚙️ {{.Config.TrainMode}}</span>
+            </div>
+            <div class="exp-stats">
+                <div class="stat">
+                    <span class="stat-value">{{printf "%.1f" .Results.AvgAccuracy}}%</span>
+                    <span class="stat-label">Accuracy</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value">{{printf "%.0f" .Results.Score}}</span>
+                    <span class="stat-label">Score</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value">{{printf "%.0f" .Results.ThroughputPerSec}}</span>
+                    <span class="stat-label">Throughput</span>
+                </div>
+            </div>
+        </a>
+        {{end}}
+    </div>
+    {{else}}
+    <div class="empty-state glass">
+        <span class="empty-icon">📭</span>
+        <h3>No experiments yet</h3>
+        <p>No {{.CurrentDomain.Name}} experiments have been recorded. Run some benchmarks to see them here.</p>
+    </div>
+    {{end}}
+</section>
+
+<!-- Domain Stats Chart -->
+<section class="section">
+    <h2 class="section-title">📈 Domain Overview</h2>
+
+    <div class="chart-container glass">
+        <canvas id="domainChart"></canvas>
+    </div>
+</section>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const ctx = document.getElementById('domainChart');
+        if (ctx) {
+            // Fetch experiments via API to avoid template issues
+            fetch('/api/experiments?domain={{.CurrentDomain.ID}}')
+                .then(r => r.json())
+                .then(experiments => {
+                    if (experiments && experiments.length > 0) {
+                        const labels = experiments.map(e => e.name);
+                        const scores = experiments.map(e => e.results.score);
+
+                        new Chart(ctx, {
+                            type: 'bar',
+                            data: {
+                                labels: labels,
+                                datasets: [{
+                                    label: 'Score',
+                                    data: scores,
+                                    backgroundColor: '{{.CurrentDomain.Color}}88',
+                                    borderColor: '{{.CurrentDomain.Color}}',
+                                    borderWidth: 2
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: { labels: { color: '#94a3b8' } }
+                                },
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        grid: { color: '#334155' },
+                                        ticks: { color: '#94a3b8' }
+                                    },
+                                    x: {
+                                        grid: { color: '#334155' },
+                                        ticks: { color: '#94a3b8' }
+                                    }
+                                }
+                            }
+                        });
+                    }
+                });
+        }
+    });
+</script>
+{{end}}

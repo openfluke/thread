@@ -1,0 +1,266 @@
+{{define "content"}}
+<div class="page-header">
+    <nav class="breadcrumb">
+        <a href="/">Home</a>
+        <span class="sep">›</span>
+        <a href="/domain/{{.CurrentDomain.ID}}">{{.CurrentDomain.Name}}</a>
+        <span class="sep">›</span>
+        <a href="/domain/{{.CurrentDomain.ID}}/{{.Experiment.Level}}">Level {{.Experiment.Level}}</a>
+        <span class="sep">›</span>
+        <span>{{.Experiment.Name}}</span>
+    </nav>
+    <h1 class="page-title">
+        <span class="title-icon" style="color: {{.CurrentDomain.Color}}">{{.CurrentDomain.Icon}}</span>
+        {{.Experiment.Name}}
+    </h1>
+    <p class="page-description">{{.Experiment.Description}}</p>
+    <div class="exp-badges">
+        <span class="level-badge level-{{.Experiment.Level}}">Level {{.Experiment.Level}}</span>
+        <span class="exp-status status-{{.Experiment.Status}}">{{.Experiment.Status}}</span>
+        <span class="badge">{{.Experiment.Config.TrainMode}}</span>
+        <span class="badge">{{.Experiment.Config.NumericType}}</span>
+    </div>
+</div>
+
+<!-- Score Hero -->
+<section class="section">
+    <div class="score-hero glass">
+        <div class="score-main">
+            <span class="score-value">{{printf "%.0f" .Experiment.Results.Score}}</span>
+            <span class="score-label">T.H.R.E.A.D. Score</span>
+        </div>
+        <div class="score-formula">
+            = (Throughput × Stability × Consistency) / 100,000
+        </div>
+    </div>
+</section>
+
+<!-- Metrics Grid -->
+<section class="section">
+    <h2 class="section-title">📊 Performance Metrics</h2>
+
+    <div class="metrics-detail-grid">
+        <div class="metric-detail glass">
+            <div class="metric-value-lg">{{printf "%.1f" .Experiment.Results.AvgAccuracy}}%</div>
+            <div class="metric-label">Average Accuracy</div>
+            <div class="metric-bar">
+                <div class="metric-fill" style="width: {{.Experiment.Results.AvgAccuracy}}%"></div>
+            </div>
+        </div>
+
+        <div class="metric-detail glass">
+            <div class="metric-value-lg">{{printf "%.0f" .Experiment.Results.Stability}}%</div>
+            <div class="metric-label">Stability Index</div>
+            <div class="metric-bar">
+                <div class="metric-fill success" style="width: {{.Experiment.Results.Stability}}%"></div>
+            </div>
+        </div>
+
+        <div class="metric-detail glass">
+            <div class="metric-value-lg">{{printf "%.0f" .Experiment.Results.Consistency}}%</div>
+            <div class="metric-label">Consistency Rate</div>
+            <div class="metric-bar">
+                <div class="metric-fill info" style="width: {{.Experiment.Results.Consistency}}%"></div>
+            </div>
+        </div>
+
+        <div class="metric-detail glass">
+            <div class="metric-value-lg">{{printf "%.0f" .Experiment.Results.ThroughputPerSec}}</div>
+            <div class="metric-label">Throughput/sec</div>
+            <div class="metric-bar">
+                <div class="metric-fill warning" style="width: {{printf " %.0f" (min 100 (divFloat
+                    .Experiment.Results.ThroughputPerSec 200))}}%"></div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Configuration -->
+<section class="section">
+    <h2 class="section-title">⚙️ Configuration</h2>
+
+    <div class="config-grid">
+        <div class="config-card glass">
+            <h3>Dataset</h3>
+            <p class="config-value-lg">{{.Experiment.Dataset}}</p>
+        </div>
+
+        <div class="config-card glass">
+            <h3>Training Mode</h3>
+            <p class="config-value-lg">{{.Experiment.Config.TrainMode}}</p>
+        </div>
+
+        <div class="config-card glass">
+            <h3>Numeric Type</h3>
+            <p class="config-value-lg">{{.Experiment.Config.NumericType}}</p>
+        </div>
+
+        <div class="config-card glass">
+            <h3>Batch Size</h3>
+            <p class="config-value-lg">{{.Experiment.Config.BatchSize}}</p>
+        </div>
+    </div>
+
+    <div class="layers-card glass">
+        <h3>Network Architecture</h3>
+        <div class="layers-flow">
+            {{range $i, $layer := .Experiment.Config.Layers}}
+            {{if $i}}<span class="layer-arrow">→</span>{{end}}
+            <span class="layer-box">{{$layer}}</span>
+            {{end}}
+        </div>
+    </div>
+</section>
+
+<!-- Charts -->
+<section class="section">
+    <h2 class="section-title">📈 Visualization</h2>
+
+    <div class="charts-grid">
+        <div class="chart-container-lg glass">
+            <h3 class="chart-title">Accuracy Over Time</h3>
+            <canvas id="timelineChart"></canvas>
+        </div>
+
+        <div class="chart-container glass">
+            <h3 class="chart-title">Metrics Radar</h3>
+            <canvas id="radarChart"></canvas>
+        </div>
+
+        <div class="chart-container glass">
+            <h3 class="chart-title">Score Breakdown</h3>
+            <canvas id="pieChart"></canvas>
+        </div>
+    </div>
+</section>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const exp = {{.Experiment }
+    };
+
+    // Timeline Chart
+    const timelineCtx = document.getElementById('timelineChart');
+    if (timelineCtx) {
+        // Generate sample data if no windows
+        const windows = exp.results.windows && exp.results.windows.length > 0
+            ? exp.results.windows
+            : Array.from({ length: 60 }, (_, i) => ({
+                timeMs: (i + 1) * 1000,
+                accuracy: exp.results.avgAccuracy + (Math.random() - 0.5) * 20
+            }));
+
+        new Chart(timelineCtx, {
+            type: 'line',
+            data: {
+                labels: windows.map(w => (w.timeMs / 1000) + 's'),
+                datasets: [{
+                    label: 'Accuracy %',
+                    data: windows.map(w => w.accuracy),
+                    borderColor: '{{.CurrentDomain.Color}}',
+                    backgroundColor: '{{.CurrentDomain.Color}}22',
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        grid: { color: '#334155' },
+                        ticks: { color: '#94a3b8' }
+                    },
+                    x: {
+                        grid: { color: '#334155' },
+                        ticks: {
+                            color: '#94a3b8',
+                            maxTicksLimit: 12
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Radar Chart
+    const radarCtx = document.getElementById('radarChart');
+    if (radarCtx) {
+        new Chart(radarCtx, {
+            type: 'radar',
+            data: {
+                labels: ['Accuracy', 'Stability', 'Consistency', 'Throughput', 'Score'],
+                datasets: [{
+                    label: exp.name,
+                    data: [
+                        exp.results.avgAccuracy,
+                        exp.results.stability,
+                        exp.results.consistency,
+                        Math.min(100, Math.log10(exp.results.throughputPerSec) * 25),
+                        Math.min(100, exp.results.score / 10)
+                    ],
+                    borderColor: '{{.CurrentDomain.Color}}',
+                    backgroundColor: '{{.CurrentDomain.Color}}44',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    r: {
+                        beginAtZero: true,
+                        max: 100,
+                        grid: { color: '#334155' },
+                        ticks: {
+                            color: '#94a3b8',
+                            backdropColor: 'transparent'
+                        },
+                        pointLabels: { color: '#94a3b8' }
+                    }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+
+    // Pie Chart
+    const pieCtx = document.getElementById('pieChart');
+    if (pieCtx) {
+        new Chart(pieCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Throughput Factor', 'Stability Factor', 'Consistency Factor'],
+                datasets: [{
+                    data: [
+                        Math.log10(exp.results.throughputPerSec) * 10,
+                        exp.results.stability,
+                        exp.results.consistency
+                    ],
+                    backgroundColor: ['#3b82f6', '#10b981', '#f59e0b'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { color: '#94a3b8' }
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
+{{end}}

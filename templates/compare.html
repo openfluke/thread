@@ -1,0 +1,301 @@
+{{define "content"}}
+<div class="page-header">
+    <nav class="breadcrumb">
+        <a href="/">Home</a>
+        <span class="sep">›</span>
+        <span>Compare</span>
+    </nav>
+    <h1 class="page-title">
+        <span class="title-icon">📊</span>
+        Compare Experiments
+    </h1>
+    <p class="page-description">Cross-experiment analysis and comparison tools</p>
+</div>
+
+<!-- Filters -->
+<section class="section">
+    <div class="filters glass">
+        <div class="filter-group">
+            <label>Domain</label>
+            <select id="filterDomain" onchange="filterExperiments()">
+                <option value="">All Domains</option>
+                {{range .Domains}}
+                <option value="{{.ID}}">{{.Icon}} {{.Name}}</option>
+                {{end}}
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>Level</label>
+            <select id="filterLevel" onchange="filterExperiments()">
+                <option value="">All Levels</option>
+                {{range .Levels}}
+                <option value="{{.Level}}">Level {{.Level}} - {{.Name}}</option>
+                {{end}}
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>Sort By</label>
+            <select id="sortBy" onchange="filterExperiments()">
+                <option value="score">Score (High to Low)</option>
+                <option value="accuracy">Accuracy</option>
+                <option value="throughput">Throughput</option>
+                <option value="stability">Stability</option>
+            </select>
+        </div>
+    </div>
+</section>
+
+<!-- Comparison Table -->
+<section class="section">
+    <h2 class="section-title">📋 Experiment Comparison Table</h2>
+
+    <div class="comparison-table glass" id="comparisonTable">
+        <table>
+            <thead>
+                <tr>
+                    <th>Experiment</th>
+                    <th>Domain</th>
+                    <th>Level</th>
+                    <th>Mode</th>
+                    <th>Accuracy</th>
+                    <th>Stability</th>
+                    <th>Consistency</th>
+                    <th>Throughput</th>
+                    <th>Score</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                {{range .Experiments}}
+                <tr class="exp-row" data-domain="{{.Domain}}" data-level="{{.Level}}" data-score="{{.Results.Score}}"
+                    data-accuracy="{{.Results.AvgAccuracy}}" data-throughput="{{.Results.ThroughputPerSec}}"
+                    data-stability="{{.Results.Stability}}">
+                    <td>
+                        <a href="/experiment/{{.ID}}" class="exp-link">{{.Name}}</a>
+                    </td>
+                    <td>{{.Domain}}</td>
+                    <td><span class="level-badge level-{{.Level}}">{{.Level}}</span></td>
+                    <td><code>{{.Config.TrainMode}}</code></td>
+                    <td>{{printf "%.1f" .Results.AvgAccuracy}}%</td>
+                    <td>{{printf "%.0f" .Results.Stability}}%</td>
+                    <td>{{printf "%.0f" .Results.Consistency}}%</td>
+                    <td>{{printf "%.0f" .Results.ThroughputPerSec}}</td>
+                    <td><strong>{{printf "%.0f" .Results.Score}}</strong></td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- Cross-Domain Chart -->
+<section class="section">
+    <h2 class="section-title">📈 Cross-Domain Performance</h2>
+
+    <div class="charts-row">
+        <div class="chart-container-lg glass">
+            <h3 class="chart-title">Score by Experiment</h3>
+            <canvas id="scoresChart"></canvas>
+        </div>
+    </div>
+</section>
+
+<!-- Scatter Plot -->
+<section class="section">
+    <h2 class="section-title">🎯 Throughput vs Accuracy Trade-off</h2>
+
+    <div class="chart-container-xl glass">
+        <canvas id="scatterChart"></canvas>
+    </div>
+</section>
+
+<!-- Heatmap-style Overview -->
+<section class="section">
+    <h2 class="section-title">🗺️ Domain × Level Matrix</h2>
+
+    <div class="matrix-container glass">
+        <div class="matrix" id="matrix">
+            <div class="matrix-header">
+                <div class="matrix-cell header"></div>
+                {{range .Levels}}
+                <div class="matrix-cell header">L{{.Level}}</div>
+                {{end}}
+            </div>
+            {{range $domain := .Domains}}
+            <div class="matrix-row" data-domain="{{$domain.ID}}">
+                <div class="matrix-cell header">{{$domain.Icon}} {{$domain.Name}}</div>
+                {{range $.Levels}}
+                <div class="matrix-cell" data-level="{{.Level}}" id="cell-{{$domain.ID}}-{{.Level}}">-</div>
+                {{end}}
+            </div>
+            {{end}}
+        </div>
+    </div>
+</section>
+
+<script>
+    const allExperiments = {{.Experiments }};
+    let filteredExperiments = [...allExperiments];
+
+    function filterExperiments() {
+        const domain = document.getElementById('filterDomain').value;
+        const level = document.getElementById('filterLevel').value;
+        const sortBy = document.getElementById('sortBy').value;
+
+        // Filter rows
+        const rows = document.querySelectorAll('.exp-row');
+        rows.forEach(row => {
+            const rowDomain = row.dataset.domain;
+            const rowLevel = row.dataset.level;
+
+            let show = true;
+            if (domain && rowDomain !== domain) show = false;
+            if (level && rowLevel !== level) show = false;
+
+            row.style.display = show ? '' : 'none';
+        });
+
+        // Sort rows
+        const tbody = document.getElementById('tableBody');
+        const rowsArray = Array.from(rows);
+        rowsArray.sort((a, b) => {
+            const aVal = parseFloat(a.dataset[sortBy]) || 0;
+            const bVal = parseFloat(b.dataset[sortBy]) || 0;
+            return bVal - aVal;
+        });
+        rowsArray.forEach(row => tbody.appendChild(row));
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        // Populate matrix
+        allExperiments.forEach(exp => {
+            const cell = document.getElementById(`cell-${exp.domain}-${exp.level}`);
+            if (cell) {
+                cell.textContent = Math.round(exp.results.score);
+                cell.classList.add('has-data');
+                cell.style.backgroundColor = getScoreColor(exp.results.score);
+            }
+        });
+
+        // Scores Chart
+        const scoresCtx = document.getElementById('scoresChart');
+        if (scoresCtx && allExperiments.length > 0) {
+            const domainColors = {
+                classification: '#3b82f6',
+                regression: '#10b981',
+                generation: '#8b5cf6',
+                sequence: '#f59e0b',
+                reinforcement: '#ef4444',
+                anomaly: '#ec4899',
+                clustering: '#14b8a6',
+                embedding: '#6366f1',
+                optimization: '#f97316',
+                metalearning: '#a855f7'
+            };
+
+            new Chart(scoresCtx, {
+                type: 'bar',
+                data: {
+                    labels: allExperiments.map(e => e.name),
+                    datasets: [{
+                        label: 'Score',
+                        data: allExperiments.map(e => e.results.score),
+                        backgroundColor: allExperiments.map(e => domainColors[e.domain] || '#64748b'),
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: '#334155' },
+                            ticks: { color: '#94a3b8' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#94a3b8' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Scatter Chart
+        const scatterCtx = document.getElementById('scatterChart');
+        if (scatterCtx && allExperiments.length > 0) {
+            new Chart(scatterCtx, {
+                type: 'bubble',
+                data: {
+                    datasets: [{
+                        label: 'Experiments',
+                        data: allExperiments.map(e => ({
+                            x: e.results.throughputPerSec,
+                            y: e.results.avgAccuracy,
+                            r: Math.sqrt(e.results.score) / 2,
+                            name: e.name
+                        })),
+                        backgroundColor: allExperiments.map(e => {
+                            const colors = {
+                                classification: '#3b82f688',
+                                regression: '#10b98188',
+                                generation: '#8b5cf688',
+                                sequence: '#f59e0b88',
+                                reinforcement: '#ef444488'
+                            };
+                            return colors[e.domain] || '#64748b88';
+                        })
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => {
+                                    const d = ctx.raw;
+                                    return `${d.name}: ${d.y.toFixed(1)}% acc @ ${d.x.toFixed(0)} tok/s`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Throughput (tokens/sec)',
+                                color: '#94a3b8'
+                            },
+                            grid: { color: '#334155' },
+                            ticks: { color: '#94a3b8' }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Accuracy %',
+                                color: '#94a3b8'
+                            },
+                            beginAtZero: true,
+                            max: 100,
+                            grid: { color: '#334155' },
+                            ticks: { color: '#94a3b8' }
+                        }
+                    }
+                }
+            });
+        }
+    });
+
+    function getScoreColor(score) {
+        if (score >= 700) return 'rgba(16, 185, 129, 0.6)';
+        if (score >= 500) return 'rgba(59, 130, 246, 0.6)';
+        if (score >= 300) return 'rgba(245, 158, 11, 0.6)';
+        return 'rgba(100, 116, 139, 0.3)';
+    }
+</script>
+{{end}}
