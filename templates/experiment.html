@@ -44,7 +44,7 @@
             <div class="metric-value-lg">{{printf "%.1f" .Experiment.Results.AvgAccuracy}}%</div>
             <div class="metric-label">Average Accuracy</div>
             <div class="metric-bar">
-                <div class="metric-fill" style="width: {{.Experiment.Results.AvgAccuracy}}%"></div>
+                <div class="metric-fill" style="width: {{printf " %.0f" .Experiment.Results.AvgAccuracy}}%"></div>
             </div>
         </div>
 
@@ -52,7 +52,7 @@
             <div class="metric-value-lg">{{printf "%.0f" .Experiment.Results.Stability}}%</div>
             <div class="metric-label">Stability Index</div>
             <div class="metric-bar">
-                <div class="metric-fill success" style="width: {{.Experiment.Results.Stability}}%"></div>
+                <div class="metric-fill success" style="width: {{printf " %.0f" .Experiment.Results.Stability}}%"></div>
             </div>
         </div>
 
@@ -60,7 +60,7 @@
             <div class="metric-value-lg">{{printf "%.0f" .Experiment.Results.Consistency}}%</div>
             <div class="metric-label">Consistency Rate</div>
             <div class="metric-bar">
-                <div class="metric-fill info" style="width: {{.Experiment.Results.Consistency}}%"></div>
+                <div class="metric-fill info" style="width: {{printf " %.0f" .Experiment.Results.Consistency}}%"></div>
             </div>
         </div>
 
@@ -68,8 +68,7 @@
             <div class="metric-value-lg">{{printf "%.0f" .Experiment.Results.ThroughputPerSec}}</div>
             <div class="metric-label">Throughput/sec</div>
             <div class="metric-bar">
-                <div class="metric-fill warning" style="width: {{printf " %.0f" (min 100 (divFloat
-                    .Experiment.Results.ThroughputPerSec 200))}}%"></div>
+                <div class="metric-fill warning" id="throughputBar"></div>
             </div>
         </div>
     </div>
@@ -136,131 +135,126 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const exp = {{.Experiment }
-    };
-
-    // Timeline Chart
-    const timelineCtx = document.getElementById('timelineChart');
-    if (timelineCtx) {
-        // Generate sample data if no windows
-        const windows = exp.results.windows && exp.results.windows.length > 0
-            ? exp.results.windows
-            : Array.from({ length: 60 }, (_, i) => ({
-                timeMs: (i + 1) * 1000,
-                accuracy: exp.results.avgAccuracy + (Math.random() - 0.5) * 20
-            }));
-
-        new Chart(timelineCtx, {
-            type: 'line',
-            data: {
-                labels: windows.map(w => (w.timeMs / 1000) + 's'),
-                datasets: [{
-                    label: 'Accuracy %',
-                    data: windows.map(w => w.accuracy),
-                    borderColor: '{{.CurrentDomain.Color}}',
-                    backgroundColor: '{{.CurrentDomain.Color}}22',
-                    fill: true,
-                    tension: 0.3,
-                    pointRadius: 0
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        max: 100,
-                        grid: { color: '#334155' },
-                        ticks: { color: '#94a3b8' }
-                    },
-                    x: {
-                        grid: { color: '#334155' },
-                        ticks: {
-                            color: '#94a3b8',
-                            maxTicksLimit: 12
-                        }
-                    }
+        // Fetch experiment via API to avoid template issues with JSON
+        fetch('/api/experiments/{{.Experiment.ID}}')
+            .then(r => r.json())
+            .then(exp => {
+                // Set throughput bar width dynamically
+                const throughputBar = document.getElementById('throughputBar');
+                if (throughputBar) {
+                    const pct = Math.min(100, (exp.results.throughputPerSec / 20000) * 100);
+                    throughputBar.style.width = pct + '%';
                 }
-            }
-        });
-    }
 
-    // Radar Chart
-    const radarCtx = document.getElementById('radarChart');
-    if (radarCtx) {
-        new Chart(radarCtx, {
-            type: 'radar',
-            data: {
-                labels: ['Accuracy', 'Stability', 'Consistency', 'Throughput', 'Score'],
-                datasets: [{
-                    label: exp.name,
-                    data: [
-                        exp.results.avgAccuracy,
-                        exp.results.stability,
-                        exp.results.consistency,
-                        Math.min(100, Math.log10(exp.results.throughputPerSec) * 25),
-                        Math.min(100, exp.results.score / 10)
-                    ],
-                    borderColor: '{{.CurrentDomain.Color}}',
-                    backgroundColor: '{{.CurrentDomain.Color}}44',
-                    borderWidth: 2
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    r: {
-                        beginAtZero: true,
-                        max: 100,
-                        grid: { color: '#334155' },
-                        ticks: {
-                            color: '#94a3b8',
-                            backdropColor: 'transparent'
+                // Timeline Chart
+                const timelineCtx = document.getElementById('timelineChart');
+                if (timelineCtx) {
+                    const windows = exp.results.windows && exp.results.windows.length > 0
+                        ? exp.results.windows
+                        : Array.from({ length: 60 }, (_, i) => ({
+                            timeMs: (i + 1) * 1000,
+                            accuracy: exp.results.avgAccuracy + (Math.random() - 0.5) * 20
+                        }));
+
+                    new Chart(timelineCtx, {
+                        type: 'line',
+                        data: {
+                            labels: windows.map(w => (w.timeMs / 1000) + 's'),
+                            datasets: [{
+                                label: 'Accuracy %',
+                                data: windows.map(w => w.accuracy),
+                                borderColor: '{{.CurrentDomain.Color}}',
+                                backgroundColor: '{{.CurrentDomain.Color}}22',
+                                fill: true,
+                                tension: 0.3,
+                                pointRadius: 0
+                            }]
                         },
-                        pointLabels: { color: '#94a3b8' }
-                    }
-                },
-                plugins: {
-                    legend: { display: false }
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    max: 100,
+                                    grid: { color: '#334155' },
+                                    ticks: { color: '#94a3b8' }
+                                },
+                                x: {
+                                    grid: { color: '#334155' },
+                                    ticks: { color: '#94a3b8', maxTicksLimit: 12 }
+                                }
+                            }
+                        }
+                    });
                 }
-            }
-        });
-    }
 
-    // Pie Chart
-    const pieCtx = document.getElementById('pieChart');
-    if (pieCtx) {
-        new Chart(pieCtx, {
-            type: 'doughnut',
-            data: {
-                labels: ['Throughput Factor', 'Stability Factor', 'Consistency Factor'],
-                datasets: [{
-                    data: [
-                        Math.log10(exp.results.throughputPerSec) * 10,
-                        exp.results.stability,
-                        exp.results.consistency
-                    ],
-                    backgroundColor: ['#3b82f6', '#10b981', '#f59e0b'],
-                    borderWidth: 0
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: { color: '#94a3b8' }
-                    }
+                // Radar Chart
+                const radarCtx = document.getElementById('radarChart');
+                if (radarCtx) {
+                    new Chart(radarCtx, {
+                        type: 'radar',
+                        data: {
+                            labels: ['Accuracy', 'Stability', 'Consistency', 'Throughput', 'Score'],
+                            datasets: [{
+                                label: exp.name,
+                                data: [
+                                    exp.results.avgAccuracy,
+                                    exp.results.stability,
+                                    exp.results.consistency,
+                                    Math.min(100, Math.log10(exp.results.throughputPerSec) * 25),
+                                    Math.min(100, exp.results.score / 10)
+                                ],
+                                borderColor: '{{.CurrentDomain.Color}}',
+                                backgroundColor: '{{.CurrentDomain.Color}}44',
+                                borderWidth: 2
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                r: {
+                                    beginAtZero: true,
+                                    max: 100,
+                                    grid: { color: '#334155' },
+                                    ticks: { color: '#94a3b8', backdropColor: 'transparent' },
+                                    pointLabels: { color: '#94a3b8' }
+                                }
+                            },
+                            plugins: { legend: { display: false } }
+                        }
+                    });
                 }
-            }
-        });
-    }
-});
+
+                // Pie Chart
+                const pieCtx = document.getElementById('pieChart');
+                if (pieCtx) {
+                    new Chart(pieCtx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['Throughput Factor', 'Stability Factor', 'Consistency Factor'],
+                            datasets: [{
+                                data: [
+                                    Math.log10(exp.results.throughputPerSec) * 10,
+                                    exp.results.stability,
+                                    exp.results.consistency
+                                ],
+                                backgroundColor: ['#3b82f6', '#10b981', '#f59e0b'],
+                                borderWidth: 0
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { position: 'bottom', labels: { color: '#94a3b8' } }
+                            }
+                        }
+                    });
+                }
+            });
+    });
 </script>
 {{end}}

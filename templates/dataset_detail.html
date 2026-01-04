@@ -1,0 +1,329 @@
+{{define "content"}}
+<div class="page-header">
+    <nav class="breadcrumb">
+        <a href="/">Home</a>
+        <span class="sep">›</span>
+        <a href="/datasets">Datasets</a>
+        <span class="sep">›</span>
+        <span id="datasetName">Loading...</span>
+    </nav>
+    <h1 class="page-title">
+        <span class="title-icon">📁</span>
+        <span id="pageTitle">Dataset Experiments</span>
+    </h1>
+    <p class="page-description" id="pageDesc">
+        Compare all experiments on this dataset across different configurations.
+    </p>
+</div>
+
+<!-- Summary Stats -->
+<div class="stats-grid" id="statsGrid">
+    <div class="stat-card glass">
+        <div class="stat-icon">🧪</div>
+        <div class="stat-value" id="expCount">-</div>
+        <div class="stat-label">Experiments</div>
+    </div>
+    <div class="stat-card glass">
+        <div class="stat-icon">🏆</div>
+        <div class="stat-value" id="bestScore">-</div>
+        <div class="stat-label">Best Score</div>
+    </div>
+    <div class="stat-card glass">
+        <div class="stat-icon">📊</div>
+        <div class="stat-value" id="avgAccuracy">-</div>
+        <div class="stat-label">Avg Accuracy</div>
+    </div>
+    <div class="stat-card glass">
+        <div class="stat-icon">⚡</div>
+        <div class="stat-value" id="bestThroughput">-</div>
+        <div class="stat-label">Best Throughput</div>
+    </div>
+</div>
+
+<!-- Configuration Comparison -->
+<section class="section">
+    <h2 class="section-title">⚙️ Configuration Comparison</h2>
+    <p class="section-description">See how different settings affect performance on this dataset</p>
+
+    <div class="charts-row">
+        <div class="chart-container glass">
+            <h3 class="chart-title">Score by Training Mode</h3>
+            <canvas id="modeChart"></canvas>
+        </div>
+        <div class="chart-container glass">
+            <h3 class="chart-title">Score by Numeric Type</h3>
+            <canvas id="numericChart"></canvas>
+        </div>
+    </div>
+</section>
+
+<!-- Performance Scatter -->
+<section class="section">
+    <h2 class="section-title">🎯 Performance Trade-offs</h2>
+
+    <div class="chart-container-xl glass">
+        <h3 class="chart-title">Throughput vs Accuracy (bubble size = score)</h3>
+        <canvas id="scatterChart"></canvas>
+    </div>
+</section>
+
+<!-- Radar Comparison -->
+<section class="section">
+    <h2 class="section-title">📊 Multi-Metric Comparison</h2>
+
+    <div class="chart-container-lg glass">
+        <canvas id="radarChart"></canvas>
+    </div>
+</section>
+
+<!-- Experiments Table -->
+<section class="section">
+    <h2 class="section-title">🧪 All Experiments</h2>
+
+    <div class="comparison-table glass">
+        <table>
+            <thead>
+                <tr>
+                    <th>Experiment</th>
+                    <th>Training Mode</th>
+                    <th>Numeric Type</th>
+                    <th>Level</th>
+                    <th>Accuracy</th>
+                    <th>Stability</th>
+                    <th>Throughput</th>
+                    <th>Score</th>
+                </tr>
+            </thead>
+            <tbody id="experimentsBody">
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Get dataset name from URL
+        const pathParts = window.location.pathname.split('/');
+        const datasetName = decodeURIComponent(pathParts[pathParts.length - 1]);
+
+        document.getElementById('datasetName').textContent = datasetName;
+        document.getElementById('pageTitle').textContent = datasetName + ' Experiments';
+        document.getElementById('pageDesc').textContent =
+            'Compare all experiments on ' + datasetName + ' across different training modes, numeric types, and model sizes.';
+
+        // Fetch experiments for this dataset
+        fetch('/api/datasets/' + encodeURIComponent(datasetName))
+            .then(r => r.json())
+            .then(experiments => {
+                if (!experiments || experiments.length === 0) {
+                    document.getElementById('statsGrid').innerHTML =
+                        '<div class="empty-state glass"><span class="empty-icon">📭</span><h3>No experiments found</h3></div>';
+                    return;
+                }
+
+                // Calculate stats
+                const bestScore = Math.max(...experiments.map(e => e.results.score));
+                const avgAcc = experiments.reduce((sum, e) => sum + e.results.avgAccuracy, 0) / experiments.length;
+                const bestThroughput = Math.max(...experiments.map(e => e.results.throughputPerSec));
+
+                document.getElementById('expCount').textContent = experiments.length;
+                document.getElementById('bestScore').textContent = Math.round(bestScore);
+                document.getElementById('avgAccuracy').textContent = avgAcc.toFixed(1) + '%';
+                document.getElementById('bestThroughput').textContent = Math.round(bestThroughput);
+
+                // Group by training mode
+                const modeGroups = {};
+                experiments.forEach(e => {
+                    if (!modeGroups[e.config.trainMode]) modeGroups[e.config.trainMode] = [];
+                    modeGroups[e.config.trainMode].push(e.results.score);
+                });
+
+                // Mode chart
+                const modeCtx = document.getElementById('modeChart');
+                if (modeCtx) {
+                    const labels = Object.keys(modeGroups);
+                    const avgScores = labels.map(m =>
+                        modeGroups[m].reduce((a, b) => a + b, 0) / modeGroups[m].length
+                    );
+                    const colors = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444'];
+
+                    new Chart(modeCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Avg Score',
+                                data: avgScores,
+                                backgroundColor: colors.slice(0, labels.length),
+                                borderRadius: 4
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                y: { beginAtZero: true, grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
+                                x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+                            }
+                        }
+                    });
+                }
+
+                // Group by numeric type
+                const numericGroups = {};
+                experiments.forEach(e => {
+                    if (!numericGroups[e.config.numericType]) numericGroups[e.config.numericType] = [];
+                    numericGroups[e.config.numericType].push(e.results.score);
+                });
+
+                // Numeric chart
+                const numericCtx = document.getElementById('numericChart');
+                if (numericCtx) {
+                    const labels = Object.keys(numericGroups);
+                    const avgScores = labels.map(n =>
+                        numericGroups[n].reduce((a, b) => a + b, 0) / numericGroups[n].length
+                    );
+                    const colors = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6'];
+
+                    new Chart(numericCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Avg Score',
+                                data: avgScores,
+                                backgroundColor: colors.slice(0, labels.length),
+                                borderRadius: 4
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                y: { beginAtZero: true, grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
+                                x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+                            }
+                        }
+                    });
+                }
+
+                // Scatter plot
+                const scatterCtx = document.getElementById('scatterChart');
+                if (scatterCtx) {
+                    const colors = ['#3b82f688', '#10b98188', '#8b5cf688', '#f59e0b88', '#ef444488'];
+                    const modeList = Object.keys(modeGroups);
+
+                    new Chart(scatterCtx, {
+                        type: 'bubble',
+                        data: {
+                            datasets: [{
+                                label: 'Experiments',
+                                data: experiments.map(e => ({
+                                    x: e.results.throughputPerSec,
+                                    y: e.results.avgAccuracy,
+                                    r: Math.sqrt(e.results.score) / 2,
+                                    name: e.name,
+                                    mode: e.config.trainMode
+                                })),
+                                backgroundColor: experiments.map(e =>
+                                    colors[modeList.indexOf(e.config.trainMode) % colors.length]
+                                )
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    callbacks: {
+                                        label: (ctx) => {
+                                            const d = ctx.raw;
+                                            return `${d.name} (${d.mode}): ${d.y.toFixed(1)}% @ ${Math.round(d.x)}/s`;
+                                        }
+                                    }
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    title: { display: true, text: 'Throughput (samples/sec)', color: '#94a3b8' },
+                                    grid: { color: '#334155' },
+                                    ticks: { color: '#94a3b8' }
+                                },
+                                y: {
+                                    title: { display: true, text: 'Accuracy %', color: '#94a3b8' },
+                                    beginAtZero: true,
+                                    max: 100,
+                                    grid: { color: '#334155' },
+                                    ticks: { color: '#94a3b8' }
+                                }
+                            }
+                        }
+                    });
+                }
+
+                // Radar chart (show top 5)
+                const radarCtx = document.getElementById('radarChart');
+                if (radarCtx) {
+                    const top5 = experiments.sort((a, b) => b.results.score - a.results.score).slice(0, 5);
+                    const colors = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444'];
+
+                    new Chart(radarCtx, {
+                        type: 'radar',
+                        data: {
+                            labels: ['Accuracy', 'Stability', 'Consistency', 'Throughput (log)', 'Score (scaled)'],
+                            datasets: top5.map((e, i) => ({
+                                label: e.config.trainMode,
+                                data: [
+                                    e.results.avgAccuracy,
+                                    e.results.stability,
+                                    e.results.consistency,
+                                    Math.log10(e.results.throughputPerSec) * 25,
+                                    e.results.score / 10
+                                ],
+                                borderColor: colors[i],
+                                backgroundColor: colors[i] + '33',
+                                borderWidth: 2
+                            }))
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                r: {
+                                    beginAtZero: true,
+                                    max: 100,
+                                    grid: { color: '#334155' },
+                                    ticks: { color: '#94a3b8', backdropColor: 'transparent' },
+                                    pointLabels: { color: '#94a3b8' }
+                                }
+                            },
+                            plugins: {
+                                legend: { labels: { color: '#94a3b8' } }
+                            }
+                        }
+                    });
+                }
+
+                // Experiments table
+                const tbody = document.getElementById('experimentsBody');
+                experiments.sort((a, b) => b.results.score - a.results.score).forEach(exp => {
+                    tbody.innerHTML += `
+                    <tr>
+                        <td><a href="/experiment/${exp.id}" class="exp-link">${exp.name}</a></td>
+                        <td><code>${exp.config.trainMode}</code></td>
+                        <td><code>${exp.config.numericType}</code></td>
+                        <td><span class="level-badge level-${exp.level}">${exp.level}</span></td>
+                        <td>${exp.results.avgAccuracy.toFixed(1)}%</td>
+                        <td>${exp.results.stability.toFixed(0)}%</td>
+                        <td>${Math.round(exp.results.throughputPerSec)}</td>
+                        <td><strong>${Math.round(exp.results.score)}</strong></td>
+                    </tr>
+                `;
+                });
+            });
+    });
+</script>
+{{end}}

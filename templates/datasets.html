@@ -1,0 +1,236 @@
+{{define "content"}}
+<div class="page-header">
+    <nav class="breadcrumb">
+        <a href="/">Home</a>
+        <span class="sep">›</span>
+        <span>Datasets</span>
+    </nav>
+    <h1 class="page-title">
+        <span class="title-icon">📁</span>
+        Dataset Comparison
+    </h1>
+    <p class="page-description">
+        Compare experiments grouped by dataset. See how different training modes,
+        numeric types, and model sizes perform on the same data.
+    </p>
+</div>
+
+<!-- Dataset Cards -->
+<section class="section">
+    <h2 class="section-title">📊 Available Datasets</h2>
+    <p class="section-description">Click a dataset to see all experiments using it</p>
+
+    <div class="datasets-grid" id="datasetsGrid">
+        <div class="loading">Loading datasets...</div>
+    </div>
+</section>
+
+<!-- Overview Charts -->
+<section class="section">
+    <h2 class="section-title">📈 Cross-Dataset Overview</h2>
+
+    <div class="charts-row">
+        <div class="chart-container glass">
+            <h3 class="chart-title">Experiments per Dataset</h3>
+            <canvas id="datasetCountChart"></canvas>
+        </div>
+        <div class="chart-container glass">
+            <h3 class="chart-title">Average Score by Dataset</h3>
+            <canvas id="datasetScoreChart"></canvas>
+        </div>
+    </div>
+</section>
+
+<!-- All Experiments Table -->
+<section class="section">
+    <h2 class="section-title">🧪 All Experiments</h2>
+
+    <div class="filters glass">
+        <div class="filter-group">
+            <label>Dataset</label>
+            <select id="filterDataset" onchange="filterTable()">
+                <option value="">All Datasets</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>Training Mode</label>
+            <select id="filterMode" onchange="filterTable()">
+                <option value="">All Modes</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>Numeric Type</label>
+            <select id="filterNumeric" onchange="filterTable()">
+                <option value="">All Types</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="comparison-table glass">
+        <table>
+            <thead>
+                <tr>
+                    <th>Experiment</th>
+                    <th>Dataset</th>
+                    <th>Mode</th>
+                    <th>Numeric</th>
+                    <th>Level</th>
+                    <th>Accuracy</th>
+                    <th>Throughput</th>
+                    <th>Score</th>
+                </tr>
+            </thead>
+            <tbody id="experimentsBody">
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Fetch all datasets
+        fetch('/api/datasets')
+            .then(r => r.json())
+            .then(datasets => {
+                const grid = document.getElementById('datasetsGrid');
+                if (!datasets || datasets.length === 0) {
+                    grid.innerHTML = '<div class="empty-state glass"><span class="empty-icon">📭</span><h3>No datasets yet</h3><p>Run some experiments to see datasets here.</p></div>';
+                    return;
+                }
+
+                const colors = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444', '#ec4899', '#14b8a6'];
+                let html = '';
+                datasets.forEach((ds, i) => {
+                    html += `
+                    <a href="/dataset/${encodeURIComponent(ds.name)}" class="dataset-card glass" style="--dataset-color: ${colors[i % colors.length]}">
+                        <div class="dataset-header">
+                            <span class="dataset-icon">📁</span>
+                            <span class="dataset-count">${ds.count} experiments</span>
+                        </div>
+                        <h3 class="dataset-name">${ds.name}</h3>
+                        <div class="dataset-bar">
+                            <div class="dataset-fill" style="width: ${Math.min(100, ds.count * 20)}%"></div>
+                        </div>
+                    </a>
+                `;
+                });
+                grid.innerHTML = html;
+
+                // Dataset count chart
+                const countCtx = document.getElementById('datasetCountChart');
+                if (countCtx) {
+                    new Chart(countCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: datasets.map(d => d.name),
+                            datasets: [{
+                                label: 'Experiments',
+                                data: datasets.map(d => d.count),
+                                backgroundColor: colors.slice(0, datasets.length),
+                                borderRadius: 4
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                y: { beginAtZero: true, grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
+                                x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+                            }
+                        }
+                    });
+                }
+            });
+
+        // Fetch all experiments for table and filters
+        fetch('/api/experiments')
+            .then(r => r.json())
+            .then(experiments => {
+                // Populate filter options
+                const datasets = [...new Set(experiments.map(e => e.dataset))];
+                const modes = [...new Set(experiments.map(e => e.config.trainMode))];
+                const numerics = [...new Set(experiments.map(e => e.config.numericType))];
+
+                const dsSelect = document.getElementById('filterDataset');
+                datasets.forEach(d => dsSelect.innerHTML += `<option value="${d}">${d}</option>`);
+
+                const modeSelect = document.getElementById('filterMode');
+                modes.forEach(m => modeSelect.innerHTML += `<option value="${m}">${m}</option>`);
+
+                const numSelect = document.getElementById('filterNumeric');
+                numerics.forEach(n => numSelect.innerHTML += `<option value="${n}">${n}</option>`);
+
+                // Populate table
+                const tbody = document.getElementById('experimentsBody');
+                experiments.forEach(exp => {
+                    tbody.innerHTML += `
+                    <tr data-dataset="${exp.dataset}" data-mode="${exp.config.trainMode}" data-numeric="${exp.config.numericType}">
+                        <td><a href="/experiment/${exp.id}" class="exp-link">${exp.name}</a></td>
+                        <td>${exp.dataset}</td>
+                        <td><code>${exp.config.trainMode}</code></td>
+                        <td><code>${exp.config.numericType}</code></td>
+                        <td><span class="level-badge level-${exp.level}">${exp.level}</span></td>
+                        <td>${exp.results.avgAccuracy.toFixed(1)}%</td>
+                        <td>${Math.round(exp.results.throughputPerSec)}</td>
+                        <td><strong>${Math.round(exp.results.score)}</strong></td>
+                    </tr>
+                `;
+                });
+
+                // Calculate avg score per dataset for chart
+                const datasetScores = {};
+                experiments.forEach(exp => {
+                    if (!datasetScores[exp.dataset]) {
+                        datasetScores[exp.dataset] = { total: 0, count: 0 };
+                    }
+                    datasetScores[exp.dataset].total += exp.results.score;
+                    datasetScores[exp.dataset].count++;
+                });
+
+                const scoreCtx = document.getElementById('datasetScoreChart');
+                if (scoreCtx) {
+                    const labels = Object.keys(datasetScores);
+                    const scores = labels.map(d => datasetScores[d].total / datasetScores[d].count);
+                    const colors = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444'];
+
+                    new Chart(scoreCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Avg Score',
+                                data: scores,
+                                backgroundColor: colors.slice(0, labels.length),
+                                borderRadius: 4
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                y: { beginAtZero: true, grid: { color: '#334155' }, ticks: { color: '#94a3b8' } },
+                                x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+                            }
+                        }
+                    });
+                }
+            });
+    });
+
+    function filterTable() {
+        const ds = document.getElementById('filterDataset').value;
+        const mode = document.getElementById('filterMode').value;
+        const numeric = document.getElementById('filterNumeric').value;
+
+        document.querySelectorAll('#experimentsBody tr').forEach(row => {
+            let show = true;
+            if (ds && row.dataset.dataset !== ds) show = false;
+            if (mode && row.dataset.mode !== mode) show = false;
+            if (numeric && row.dataset.numeric !== numeric) show = false;
+            row.style.display = show ? '' : 'none';
+        });
+    }
+</script>
+{{end}}

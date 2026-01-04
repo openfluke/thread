@@ -420,6 +420,39 @@ func main() {
 	})
 
 	// ─────────────────────────────────────────────────────────────────────────
+	// DATASET COMPARISON PAGE
+	// ─────────────────────────────────────────────────────────────────────────
+	app.Get("/datasets", func(c *fiber.Ctx) error {
+		return renderTemplate(c, "datasets", PageData{
+			Title:       "Dataset Comparison - T.H.R.E.A.D.",
+			Description: "Compare experiments grouped by dataset",
+			Canonical:   "/datasets",
+			Domains:     AIDomains,
+			Levels:      DifficultyLevels,
+			Experiments: experiments.Experiments,
+		})
+	})
+
+	app.Get("/dataset/:name", func(c *fiber.Ctx) error {
+		datasetName := c.Params("name")
+		var exps []Experiment
+		for _, exp := range experiments.Experiments {
+			if exp.Dataset == datasetName {
+				exps = append(exps, exp)
+			}
+		}
+
+		return renderTemplate(c, "dataset_detail", PageData{
+			Title:       datasetName + " Experiments - T.H.R.E.A.D.",
+			Description: "Compare all " + datasetName + " experiments across configurations",
+			Canonical:   "/dataset/" + datasetName,
+			Domains:     AIDomains,
+			Levels:      DifficultyLevels,
+			Experiments: exps,
+		})
+	})
+
+	// ─────────────────────────────────────────────────────────────────────────
 	// API ENDPOINTS
 	// ─────────────────────────────────────────────────────────────────────────
 	api := app.Group("/api")
@@ -501,6 +534,39 @@ func main() {
 			sorted = sorted[:20]
 		}
 		return c.JSON(sorted)
+	})
+
+	// Datasets list
+	api.Get("/datasets", func(c *fiber.Ctx) error {
+		datasetMap := make(map[string]int)
+		for _, exp := range experiments.Experiments {
+			datasetMap[exp.Dataset]++
+		}
+
+		type DatasetInfo struct {
+			Name  string `json:"name"`
+			Count int    `json:"count"`
+		}
+		var datasets []DatasetInfo
+		for name, count := range datasetMap {
+			datasets = append(datasets, DatasetInfo{Name: name, Count: count})
+		}
+		sort.Slice(datasets, func(i, j int) bool {
+			return datasets[i].Count > datasets[j].Count
+		})
+		return c.JSON(datasets)
+	})
+
+	// Experiments by dataset
+	api.Get("/datasets/:name", func(c *fiber.Ctx) error {
+		datasetName := c.Params("name")
+		var exps []Experiment
+		for _, exp := range experiments.Experiments {
+			if exp.Dataset == datasetName {
+				exps = append(exps, exp)
+			}
+		}
+		return c.JSON(exps)
 	})
 
 	// ─────────────────────────────────────────────────────────────────────────

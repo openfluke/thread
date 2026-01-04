@@ -1,36 +1,40 @@
 {{define "base"}}
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{.Title}}</title>
     <meta name="description" content="{{.Description}}">
     <link rel="canonical" href="https://thread.openfluke.com{{.Canonical}}">
-    
+
     <!-- Open Graph -->
     <meta property="og:title" content="{{.Title}}">
     <meta property="og:description" content="{{.Description}}">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://thread.openfluke.com{{.Canonical}}">
     <meta property="og:image" content="/static/og-image.png">
-    
+
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="{{.Title}}">
     <meta name="twitter:description" content="{{.Description}}">
-    
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    
+
     <!-- Styles -->
     <link rel="stylesheet" href="/static/style.css">
 </head>
+
 <body>
     <div class="app">
         <!-- Sidebar Navigation -->
@@ -42,14 +46,15 @@
                 </a>
                 <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
             </div>
-            
+
             <nav class="sidebar-nav">
                 <div class="nav-section">
                     <h3 class="nav-title">📊 Overview</h3>
                     <a href="/" class="nav-link">Home</a>
+                    <a href="/datasets" class="nav-link">Datasets</a>
                     <a href="/compare" class="nav-link">Compare</a>
                 </div>
-                
+
                 <div class="nav-section">
                     <h3 class="nav-title">🧠 AI Domains</h3>
                     {{range .Domains}}
@@ -59,7 +64,7 @@
                     </a>
                     {{end}}
                 </div>
-                
+
                 <div class="nav-section">
                     <h3 class="nav-title">📈 Difficulty Levels</h3>
                     <div class="level-grid">
@@ -70,14 +75,15 @@
                 </div>
             </nav>
         </aside>
-        
+
         <!-- Main Content -->
         <main class="main-content">
             {{template "content" .}}
         </main>
     </div>
-    
+
     <script src="/static/app.js"></script>
 </body>
+
 </html>
 {{end}}

@@ -92,89 +92,87 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const experiments = {{.Experiments }
-    };
+        // Fetch experiments via API to avoid template brace conflicts
+        fetch('/api/experiments?domain={{.CurrentDomain.ID}}&level={{.CurrentLevel.Level}}')
+            .then(r => r.json())
+            .then(experiments => {
+                if (!experiments || experiments.length === 0) return;
 
-    // Score Chart
-    const scoreCtx = document.getElementById('scoreChart');
-    if (scoreCtx && experiments.length > 0) {
-        new Chart(scoreCtx, {
-            type: 'bar',
-            data: {
-                labels: experiments.map(e => e.name),
-                datasets: [{
-                    label: 'Score',
-                    data: experiments.map(e => e.results.score),
-                    backgroundColor: [
-                        '#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444'
-                    ],
-                    borderRadius: 8
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        grid: { color: '#334155' },
-                        ticks: { color: '#94a3b8' }
-                    },
-                    x: {
-                        grid: { display: false },
-                        ticks: { color: '#94a3b8' }
-                    }
+                // Score Chart
+                const scoreCtx = document.getElementById('scoreChart');
+                if (scoreCtx) {
+                    new Chart(scoreCtx, {
+                        type: 'bar',
+                        data: {
+                            labels: experiments.map(e => e.name),
+                            datasets: [{
+                                label: 'Score',
+                                data: experiments.map(e => e.results.score),
+                                backgroundColor: ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444'],
+                                borderRadius: 8
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    grid: { color: '#334155' },
+                                    ticks: { color: '#94a3b8' }
+                                },
+                                x: {
+                                    grid: { display: false },
+                                    ticks: { color: '#94a3b8' }
+                                }
+                            }
+                        }
+                    });
                 }
-            }
-        });
-    }
 
-    // Radar Chart
-    const radarCtx = document.getElementById('radarChart');
-    if (radarCtx && experiments.length > 0) {
-        const colors = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444'];
-        new Chart(radarCtx, {
-            type: 'radar',
-            data: {
-                labels: ['Accuracy', 'Stability', 'Consistency', 'Throughput (log)', 'Score (scaled)'],
-                datasets: experiments.map((e, i) => ({
-                    label: e.name,
-                    data: [
-                        e.results.avgAccuracy,
-                        e.results.stability,
-                        e.results.consistency,
-                        Math.log10(e.results.throughputPerSec) * 20,
-                        e.results.score / 10
-                    ],
-                    borderColor: colors[i % colors.length],
-                    backgroundColor: colors[i % colors.length] + '33',
-                    borderWidth: 2
-                }))
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    r: {
-                        beginAtZero: true,
-                        max: 100,
-                        grid: { color: '#334155' },
-                        ticks: { color: '#94a3b8', backdropColor: 'transparent' },
-                        pointLabels: { color: '#94a3b8' }
-                    }
-                },
-                plugins: {
-                    legend: {
-                        labels: { color: '#94a3b8' }
-                    }
+                // Radar Chart
+                const radarCtx = document.getElementById('radarChart');
+                if (radarCtx) {
+                    const colors = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444'];
+                    new Chart(radarCtx, {
+                        type: 'radar',
+                        data: {
+                            labels: ['Accuracy', 'Stability', 'Consistency', 'Throughput (log)', 'Score (scaled)'],
+                            datasets: experiments.map((e, i) => ({
+                                label: e.name,
+                                data: [
+                                    e.results.avgAccuracy,
+                                    e.results.stability,
+                                    e.results.consistency,
+                                    Math.log10(e.results.throughputPerSec) * 20,
+                                    e.results.score / 10
+                                ],
+                                borderColor: colors[i % colors.length],
+                                backgroundColor: colors[i % colors.length] + '33',
+                                borderWidth: 2
+                            }))
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                r: {
+                                    beginAtZero: true,
+                                    max: 100,
+                                    grid: { color: '#334155' },
+                                    ticks: { color: '#94a3b8', backdropColor: 'transparent' },
+                                    pointLabels: { color: '#94a3b8' }
+                                }
+                            },
+                            plugins: {
+                                legend: { labels: { color: '#94a3b8' } }
+                            }
+                        }
+                    });
                 }
-            }
-        });
-    }
-});
+            });
+    });
 </script>
 {{end}}
 {{end}}
